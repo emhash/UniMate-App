@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_custom_clippers/flutter_custom_clippers.dart';
+import 'package:unimate/screens/pendings.dart';
 import '../services/api_services.dart';
 import '../screens/add_exam.dart';
 import '../screens/exam_detail.dart';
 import 'all_announcements_screen.dart';
 import 'all_exams_screen.dart';
+import 'auth/login_screen.dart';
 import 'editExam.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,9 +34,20 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
+  Map<String, dynamic>?
+      profileData; // Add this at the beginning of the class (_HomeScreenState)
+
   Future<void> _loadData() async {
     setState(() => isLoading = true);
     try {
+      // Fetch profile data
+      final profile = await _apiService.getProfile();
+      setState(() {
+        profileData = profile['data']; // Update profileData
+        // print("The profile data is: $profileData");
+      });
+
+      // Fetch upcoming exams and announcements
       final exams = await _apiService.getUpcomingExams();
       final announcs = await _apiService.getAnnouncements();
       setState(() {
@@ -65,165 +78,202 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
-      body: Column(
-        children: [
-          Stack(
-            children: [
-              ClipPath(
-                clipper: OvalBottomBorderClipper(),
-                child: Container(
-                  height: 200,
-                  color: Colors.blue,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 30),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          backgroundImage: NetworkImage(
-                            "https://bubtcr.pythonanywhere.com" +
-                                "<replace_with_profile_pic>",
+      backgroundColor: Colors.grey[100],
+      body: RefreshIndicator(
+        onRefresh: _refreshPage, // Call the refresh function when pulled down
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                ClipPath(
+                  clipper: OvalBottomBorderClipper(),
+                  child: Container(
+                    height: 220,
+                    color: Colors.blueAccent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Profile Image
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(
+                              profileData?['image'] ??
+                                  'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+                            ),
+                            radius: 40,
                           ),
-                          radius: 40,
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              ' ${widget.userEmail.split("@")[0]}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          const SizedBox(width: 12),
+                          // Name, Email, and Additional Details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  profileData?['name'] ?? 'Guest',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "Intake: ${profileData?['intake'] ?? 'N/A'}",
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Section: ${profileData?['section'] ?? 'N/A'}",
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Department: ${profileData?['department'] ?? 'N/A'}",
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.userEmail,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.logout, color: Colors.white),
-                          tooltip: 'Logout',
-                          onPressed: () async {
-                            final isLoggedOut = await _apiService.logout();
-                            if (isLoggedOut) {
-                              Navigator.pushReplacementNamed(context, '/login');
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Logout failed. Try again!')),
-                              );
-                            }
-                          },
-                        ),
-                      ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.logout, color: Colors.white),
+                            tooltip: 'Logout',
+                            onPressed: () async {
+                              final isLoggedOut = await _apiService.logout();
+                              if (isLoggedOut) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => LoginScreen()),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Logout failed. Try again!')),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Pending Tasks',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+              ],
+            ),
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Pending Tasks',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTaskCard(
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTaskCard(
                                   'Exams',
                                   upcomingExams.length.toString(),
-                                  Colors.green),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildTaskCard(
-                                  'Assignments', '3', Colors.orangeAccent),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Upcoming Exams',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (upcomingExams.isEmpty)
-                          const Center(
-                            child: Text(
-                              'No upcoming exams available.',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
+                                  Colors.green,
+                                ),
                               ),
-                            ),
-                          )
-                        else
-                          Column(
-                            children: upcomingExams
-                                .map((exam) => _buildExamItem(exam))
-                                .toList(),
-                          ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Announcements',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (announcements.isEmpty)
-                          const Center(
-                            child: Text(
-                              'No announcements available.',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildTaskCard(
+                                  'Assignments',
+                                  '3',
+                                  Colors.orangeAccent,
+                                ),
                               ),
-                            ),
-                          )
-                        else
-                          Column(
-                            children: announcements
-                                .map((announcement) =>
-                                    _buildAnnouncementItem(announcement))
-                                .toList(),
+                            ],
                           ),
-                      ],
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Upcoming Exams',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (upcomingExams.isEmpty)
+                            const Center(
+                              child: Text(
+                                'No upcoming exams available.',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                          else
+                            Column(
+                              children: upcomingExams
+                                  .map((exam) => _buildExamItem(exam))
+                                  .toList(),
+                            ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Announcements',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (announcements.isEmpty)
+                            const Center(
+                              child: Text(
+                                'No announcements available.',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                          else
+                            Column(
+                              children: announcements
+                                  .map((announcement) =>
+                                      _buildAnnouncementItem(announcement))
+                                  .toList(),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -241,6 +291,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Icon(Icons.add),
         tooltip: 'Add Exam',
       ),
+
+// Inside the Widget build method
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         selectedItemColor: Colors.green,
@@ -257,6 +309,11 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),
             label: 'Announcements',
+          ),
+          BottomNavigationBarItem(
+            // New Bottom Bar Item
+            icon: Icon(Icons.pending_actions),
+            label: 'Pendings',
           ),
         ],
         currentIndex: _currentIndex,
@@ -281,11 +338,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
                 break;
+              case 3: // Navigate to Pending Applications Screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        PendingApplicationsScreen(token: widget.token),
+                  ),
+                );
+                break;
             }
           });
         },
       ),
     );
+  }
+
+  /// Refresh function
+  Future<void> _refreshPage() async {
+    // Reload data
+    await _loadData();
   }
 
   Widget _buildTaskCard(String title, String count, Color color) {

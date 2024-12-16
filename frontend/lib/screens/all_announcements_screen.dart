@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_services.dart';
+import 'add_announcement.dart';
 
 class AllAnnouncementsScreen extends StatefulWidget {
   final String token;
@@ -68,12 +69,9 @@ class _AllAnnouncementsScreenState extends State<AllAnnouncementsScreen> {
                     var announcement = announcements[index];
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.white, Colors.green.shade50],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -84,53 +82,86 @@ class _AllAnnouncementsScreenState extends State<AllAnnouncementsScreen> {
                           ),
                         ],
                       ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        title: Text(
-                          announcement['creator_name'] ?? 'User',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // User Image
+                              CircleAvatar(
+                                backgroundImage: NetworkImage(
+                                  announcement['who_posted_image'] ??
+                                      'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+                                ),
+                                radius: 30,
+                              ),
+                              const SizedBox(width: 12),
+                              // Name and Date
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    announcement['who_posted'] ??
+                                        'Unknown User',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    announcement['created_at'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 8),
-                            Text(
-                              announcement['announcement'] ?? 'No Details',
+                          const SizedBox(height: 12),
+                          // Announcement Content
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              announcement['announcement'] ??
+                                  'No Details Available',
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.black87,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              announcement['created_at'] ?? '',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.blue.shade100,
-                          radius: 24,
-                          child: const Icon(
-                            Icons.announcement,
-                            color: Colors.blue,
-                            size: 28,
                           ),
-                        ),
+                        ],
                       ),
                     );
                   },
                 ),
               ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.green.shade700,
+        child: const Icon(Icons.add),
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddAnnouncementScreen(token: widget.token),
+            ),
+          );
+          if (result == true) {
+            _loadAnnouncements(); // Reload announcements if a new one is added
+          }
+        },
       ),
     );
   }
