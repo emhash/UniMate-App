@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> announcements = [];
   bool isLoading = true;
   int _currentIndex = 0;
+  Map<String, dynamic>? profileData;
 
   @override
   void initState() {
@@ -34,20 +35,14 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  Map<String, dynamic>?
-      profileData; // Add this at the beginning of the class (_HomeScreenState)
-
   Future<void> _loadData() async {
     setState(() => isLoading = true);
     try {
-      // Fetch profile data
       final profile = await _apiService.getProfile();
       setState(() {
-        profileData = profile['data']; // Update profileData
-        // print("The profile data is: $profileData");
+        profileData = profile['data'];
       });
 
-      // Fetch upcoming exams and announcements
       final exams = await _apiService.getUpcomingExams();
       final announcs = await _apiService.getAnnouncements();
       setState(() {
@@ -65,9 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await _apiService.deleteExam(uid);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Exam deleted successfully')),
+        const SnackBar(content: Text('Exam deleted successfully')),
       );
-      _loadData(); // Refresh the list of exams
+      _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete exam: $e')),
@@ -77,35 +72,68 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Define some custom colors and styles for a more professional look
+    final Color primaryColor = Colors.blueAccent;
+    final Color secondaryColor = Colors.green;
+    final Color backgroundColor = Colors.grey.shade100;
+    final TextStyle headingStyle = const TextStyle(
+      color: Colors.black,
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+    );
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: backgroundColor,
       body: RefreshIndicator(
-        onRefresh: _refreshPage, // Call the refresh function when pulled down
+        onRefresh: _refreshPage,
         child: Column(
           children: [
+            // Top Section with Profile
             Stack(
               children: [
+                Container(
+                  height: 220,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF4A90E2), Color(0xFF007AFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
                 ClipPath(
                   clipper: OvalBottomBorderClipper(),
                   child: Container(
                     height: 220,
-                    color: Colors.blueAccent,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF007AFF), Color(0xFF4A90E2)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 20),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Profile Image
-                          CircleAvatar(
-                            backgroundImage: NetworkImage(
-                              profileData?['image'] ??
-                                  'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+                          // Profile Image with border
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
                             ),
-                            radius: 40,
+                            child: CircleAvatar(
+                              backgroundImage: NetworkImage(
+                                profileData?['image'] ??
+                                    'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png',
+                              ),
+                              radius: 40,
+                            ),
                           ),
                           const SizedBox(width: 12),
-                          // Name, Email, and Additional Details
+                          // Profile details
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,26 +211,22 @@ class _HomeScreenState extends State<HomeScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Pending Tasks',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          // Section for Pending Tasks
+                          Text('Pending Tasks', style: headingStyle),
                           const SizedBox(height: 16),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
                                 child: _buildTaskCard(
                                   'Exams',
                                   upcomingExams.length.toString(),
-                                  Colors.green,
+                                  secondaryColor,
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -215,15 +239,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Upcoming Exams',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Upcoming Exams Section
+                          Text('Upcoming Exams', style: headingStyle),
                           const SizedBox(height: 16),
                           if (upcomingExams.isEmpty)
                             const Center(
@@ -233,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Colors.grey,
                                   fontSize: 14,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             )
                           else
@@ -241,15 +262,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   .map((exam) => _buildExamItem(exam))
                                   .toList(),
                             ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Announcements',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Announcements Section
+                          Text('Announcements', style: headingStyle),
                           const SizedBox(height: 16),
                           if (announcements.isEmpty)
                             const Center(
@@ -259,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Colors.grey,
                                   fontSize: 14,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             )
                           else
@@ -287,96 +305,113 @@ class _HomeScreenState extends State<HomeScreen> {
             _loadData(); // Refresh the data
           }
         },
-        backgroundColor: Colors.green,
+        backgroundColor: secondaryColor,
         child: const Icon(Icons.add),
         tooltip: 'Add Exam',
       ),
-
-// Inside the Widget build method
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Exams',
+          boxShadow: [
+            BoxShadow(color: Colors.black12.withOpacity(0.1), blurRadius: 10),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.white,
+            selectedItemColor: secondaryColor,
+            unselectedItemColor: Colors.grey,
+            showUnselectedLabels: true,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.assignment),
+                label: 'Exams',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notifications),
+                label: 'Announcements',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.pending_actions),
+                label: 'Pendings',
+              ),
+            ],
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+                switch (index) {
+                  case 1:
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AllExamsScreen(token: widget.token),
+                      ),
+                    );
+                    break;
+                  case 2:
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AllAnnouncementsScreen(token: widget.token),
+                      ),
+                    );
+                    break;
+                  case 3:
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            PendingApplicationsScreen(token: widget.token),
+                      ),
+                    );
+                    break;
+                  default:
+                    break;
+                }
+              });
+            },
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Announcements',
-          ),
-          BottomNavigationBarItem(
-            // New Bottom Bar Item
-            icon: Icon(Icons.pending_actions),
-            label: 'Pendings',
-          ),
-        ],
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-            switch (index) {
-              case 1:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AllExamsScreen(token: widget.token),
-                  ),
-                );
-                break;
-              case 2:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        AllAnnouncementsScreen(token: widget.token),
-                  ),
-                );
-                break;
-              case 3: // Navigate to Pending Applications Screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        PendingApplicationsScreen(token: widget.token),
-                  ),
-                );
-                break;
-            }
-          });
-        },
+        ),
       ),
     );
   }
 
-  /// Refresh function
   Future<void> _refreshPage() async {
-    // Reload data
     await _loadData();
   }
 
   Widget _buildTaskCard(String title, String count, Color color) {
     return Card(
+      elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      elevation: 4,
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.8), color],
+            colors: [color.withOpacity(0.7), color],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
         ),
+        padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize:
+              MainAxisSize.min, // Let the card size itself to fit content
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
@@ -384,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.white,
               size: 32,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               count,
               style: const TextStyle(
@@ -393,11 +428,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 4),
             Text(
               title,
               style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 18,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -408,16 +445,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildExamItem(Map<String, dynamic> exam) {
     return Card(
+      elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(
           exam['exam_name'] ?? '',
           style: const TextStyle(
-            color: Colors.black,
+            color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -425,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> {
         subtitle: Text(
           exam['course_name'] ?? '',
           style: const TextStyle(
-            color: Colors.grey,
+            color: Colors.black54,
             fontSize: 14,
           ),
         ),
@@ -433,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.visibility),
+              icon: const Icon(Icons.visibility, color: Colors.blueAccent),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -445,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit, color: Colors.orangeAccent),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -454,15 +492,54 @@ class _HomeScreenState extends State<HomeScreen> {
                         EditExamScreen(token: widget.token, examDetails: exam),
                   ),
                 ).then((value) {
-                  // Refresh the list if the exam was edited
                   if (value == true) _loadData();
                 });
               },
             ),
             IconButton(
-              icon: const Icon(Icons.delete),
+              icon: const Icon(Icons.delete, color: Colors.redAccent),
               onPressed: () {
-                _deleteExam(exam['uid']);
+                // Show a beautiful confirmation dialog
+                showDialog(
+                  context: context,
+                  barrierDismissible: false, // User must tap confirm or cancel
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      title: const Text(
+                        'Confirm Deletion',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      content: const Text(
+                        'Are you sure you want to delete this exam? This action cannot be undone.',
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Delete',
+                              style: TextStyle(color: Colors.white)),
+                          onPressed: () {
+                            Navigator.of(context).pop(); // Close the dialog
+                            _deleteExam(exam['uid']); // Proceed with deletion
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
               },
             ),
           ],
@@ -473,16 +550,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAnnouncementItem(Map<String, dynamic> announcement) {
     return Card(
+      elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(
           announcement['announcement'] ?? '',
           style: const TextStyle(
-            color: Colors.black,
+            color: Colors.black87,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -490,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
         subtitle: Text(
           announcement['created_at'] ?? '',
           style: const TextStyle(
-            color: Colors.grey,
+            color: Colors.black54,
             fontSize: 14,
           ),
         ),
