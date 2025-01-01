@@ -3,20 +3,52 @@ import '../../services/auth_service.dart';
 import '../home_screen.dart';
 import '../auth/register_screen.dart';
 import '../auth/final_registration_screen.dart';
-import '../../services/api_services.dart'; // Add this import for APIService
+import '../../services/api_services.dart'; // Ensure this import is present
 
 class LoginScreen extends StatefulWidget {
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
 
+enum LoginCase {
+  validationError, // case 0
+  approved, // case 1
+  pendingApproval, // case 2
+  completeRegistration, // case 3
+  completeRegistrationApproved, // case 4
+  registrationNeeded, // case 5
+  unauthorizedRole, // case 6
+  unknown, // case -1
+}
+
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
   bool _obscureText = true;
+
+  LoginCase getLoginCase(int apiCase) {
+    switch (apiCase) {
+      case 0:
+        return LoginCase.validationError;
+      case 1:
+        return LoginCase.approved;
+      case 2:
+        return LoginCase.pendingApproval;
+      case 3:
+        return LoginCase.completeRegistration;
+      case 4:
+        return LoginCase.completeRegistrationApproved;
+      case 5:
+        return LoginCase.registrationNeeded;
+      case 6:
+        return LoginCase.unauthorizedRole;
+      default:
+        return LoginCase.unknown;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';
                       }
+                      // Add more robust email validation if necessary
                       return null;
                     },
                   ),
@@ -102,6 +135,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : Text(
@@ -144,72 +179,93 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         // Step 1: Perform Login
         final response = await _authService.login(
-          _emailController.text,
-          _passwordController.text,
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
         );
 
-        // print('Login Response: $response');
+        // Debug: Print the login response
+        print('Login Response: $response');
 
-        if (response['status'] == true) {
-          // Initialize ApiService with the token
-          final token = response['token'];
-          final apiService = ApiService(token: token);
+        final int apiCase = response['case'] ?? -1;
+        final String message = response['message'] ?? 'An error occurred.';
+        final LoginCase loginCase = getLoginCase(apiCase);
 
-          // Step 2: Check Approval Status
-          final approvalResponse = await apiService.checkApproval();
-
-          // print('Approval Response: $approvalResponse');
-
-          final bool isFilled = approvalResponse['filled'] ?? false;
-          final bool isApproved = approvalResponse['status'] ?? false;
-
-          // print('Is Filled: $isFilled, Is Approved: $isApproved');
-
-          if (isFilled && isApproved) {
-            // Account is fully approved → Go to HomeScreen
+        switch (loginCase) {
+          case LoginCase.approved:
+            // Case 1: Account is approved → Navigate to HomeScreen
+            final String token = response['token'];
+            final String userEmail = response['user']['email'];
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (context) => HomeScreen(
-                  userEmail: response['user']['email'],
+                  userEmail: userEmail,
                   token: token,
                 ),
               ),
             );
-          } else if (isFilled && !isApproved) {
-            // Account pending approval → Show message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(approvalResponse['message']),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          } else if (!isFilled && isApproved) {
-            // Account pending approval → Show message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(approvalResponse['message']),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          } else if (!isFilled && !isApproved) {
+            break;
+
+          case LoginCase.completeRegistration:
+            // Case 3: Details not filled and not approved → Navigate to FinalRegistrationScreen
+            final String token = response['token'];
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (context) => FinalRegistrationScreen(token: token),
               ),
             );
-          }
-        } else {
-          // Handle login failure
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['message'] ?? 'Login failed.'),
-              backgroundColor: Colors.red,
-            ),
-          );
+            break;
+
+          case LoginCase.pendingApproval:
+          case LoginCase.completeRegistrationApproved:
+            // Cases 2 and 4: Show an orange SnackBar
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            break;
+
+          case LoginCase.registrationNeeded:
+          case LoginCase.unauthorizedRole:
+            // Cases 5 and 6: Show a red SnackBar
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: Colors.red,
+              ),
+            );
+            break;
+
+          case LoginCase.validationError:
+            // Case 0: Validation errors
+            final Map<String, dynamic> errors =
+                response['message'] as Map<String, dynamic>;
+            String errorMessage = errors.values
+                .map((errorList) => (errorList as List<dynamic>).join(', '))
+                .join('\n');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(errorMessage),
+                backgroundColor: Colors.red,
+              ),
+            );
+            break;
+
+          case LoginCase.unknown:
+          default:
+            // Case -1 and any unexpected cases
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: Colors.red,
+              ),
+            );
+            break;
         }
       } catch (e) {
-        // Handle exception during login
-        print('Error during login: $e'); // Print the error
+        // Handle exceptions during login → Show a red SnackBar with the exception message
+        print('Error during login: $e'); // Debug: Print the error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Login failed: ${e.toString()}'),
@@ -217,6 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       } finally {
+        // Stop the loading indicator
         setState(() {
           _isLoading = false;
         });

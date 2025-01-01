@@ -20,43 +20,81 @@ class AuthService {
 
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && data['status'] == true) {
-        // Successful login, store token and user data
+      // Handle different cases based on the 'case' field
+      if (data['case'] == 1 && data['status'] == true) {
+        // Successful login and approved account
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', data['token']);
         await prefs.setString('user', jsonEncode(data['user']));
 
         return {
           'status': true,
+          'case': data['case'],
           'token': data['token'],
           'user': data['user'],
-          'message': 'Login successful'
+          'message': data['message']
         };
-      } else if (response.statusCode == 400 &&
-          data['detail'] == "Complete the last step of registration.") {
-        // Incomplete registration case
+      } else if (data['case'] == 3 && data['status'] == false) {
+        // Incomplete registration
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['token']);
+
         return {
           'status': false,
-          'detail': 'incomplete_registration',
-          'message': 'Complete the last step of registration.'
+          'case': data['case'],
+          'token': data['token'],
+          'message': data['message']
         };
-      } else if (response.statusCode == 403 &&
-          data['detail'] == "Your account is pending approval.") {
-        // Account pending approval case
+      } else if (data['case'] == 2 && data['status'] == false) {
+        // Account pending approval
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['token']);
+
         return {
           'status': false,
-          'detail': 'pending_approval',
-          'message': 'Your account is pending approval.'
+          'case': data['case'],
+          'token': data['token'],
+          'message': data['message']
+        };
+      } else if ([4, 5].contains(data['case']) && data['status'] == false) {
+        // Other cases requiring registration completion
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['token']);
+
+        return {
+          'status': false,
+          'case': data['case'],
+          'token': data['token'],
+          'message': data['message']
+        };
+      } else if (data['case'] == 0 && data['status'] == false) {
+        // Validation errors
+        return {
+          'status': false,
+          'case': data['case'],
+          'message': data['message'],
+        };
+      } else if (data['case'] == 6 && data['status'] == false) {
+        // Unauthorized role or invalid credentials
+        return {
+          'status': false,
+          'case': data['case'],
+          'message': data['message'],
         };
       } else {
-        // General error
+        // Handle unexpected cases
         return {
           'status': false,
-          'message': data['message'] ?? 'Invalid email or password'
+          'case': -1,
+          'message': 'An unexpected error occurred.',
         };
       }
     } catch (e) {
-      return {'status': false, 'message': 'An error occurred: ${e.toString()}'};
+      return {
+        'status': false,
+        'case': -1,
+        'message': 'An error occurred: ${e.toString()}'
+      };
     }
   }
 

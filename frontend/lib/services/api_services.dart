@@ -201,7 +201,7 @@ class ApiService {
     }
   }
 
-// Logout User
+  /// Logs out the user by clearing stored data
   Future<bool> logout() async {
     try {
       final response = await http.post(
@@ -227,7 +227,7 @@ class ApiService {
     }
   }
 
-// Add this method in your ApiService class
+  /// Adds an announcement
   Future<bool> addAnnouncement(String announcement) async {
     try {
       final response = await http.post(
@@ -296,6 +296,7 @@ class ApiService {
     }
   }
 
+  /// Completes the final step of registration
   Future<Map<String, dynamic>> registerFinalStep(
       Map<String, dynamic> data) async {
     try {
@@ -319,31 +320,7 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> checkApproval() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/register/v1/'),
-        headers: {
-          'Authorization': 'token $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body); // Return JSON response
-      } else {
-        throw Exception('Failed to check account approval status.');
-      }
-    } catch (e) {
-      print('Error checking account approval: $e');
-      return {
-        'status': false,
-        'filled': false,
-        'message': 'Error occurred while checking approval.',
-      };
-    }
-  }
-
+  /// Fetches pending applications
   Future<List<dynamic>> getPendings() async {
     try {
       final response = await http.get(
@@ -366,6 +343,7 @@ class ApiService {
     }
   }
 
+  /// Approves a pending application
   Future<bool> approvePendingApplication(String uid) async {
     try {
       final response = await http.post(
@@ -389,6 +367,7 @@ class ApiService {
     }
   }
 
+  /// Deletes a pending application
   Future<bool> deletePendingApplication(String uid) async {
     try {
       final response = await http.delete(
